@@ -1,0 +1,4 @@
+module Genetic where
+
+main _ = do
+     print "Hello World"
