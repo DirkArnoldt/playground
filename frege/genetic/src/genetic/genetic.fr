@@ -1,4 +1,23 @@
 module Genetic where
 
+class Chromosome a where
+    mutate :: a -> a
+    recombine :: a -> a -> a
+    calcFitness :: a -> Float
+
+mrate = 0.03
+rrate = 0.7
+
+data IntChromo = IntChromo { value :: [Int]
+                           , fitness :: Float
+                           }
+
+instance Chromosome IntChromo where
+    mutate (IntChromo v f) = IntChromo { value = [1,2], fitness = f}
+    (IntChromo v1 f1) `recombine` (IntChromo v2 f2) = IntChromo { value = [3], fitness = f1 + f2}
+    calcFitness (IntChromo v f) = f
+
+
+
 main _ = do
      print "Hello World"
