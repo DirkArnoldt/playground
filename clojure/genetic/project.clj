@@ -6,3 +6,4 @@
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/tools.cli "0.3.3"]]
   :main genetic.example)
+;  :main neuron.example)
