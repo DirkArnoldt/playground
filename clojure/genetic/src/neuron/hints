@@ -1,0 +1,23 @@
+(defn etransform [f m idx] (assoc-in m idx (f (get-in m idx))))
+
+(defn make [si sj]
+  (for [i (range si) j (range sj)]
+       [i j]))
+
+(defn get-idx [m]
+  (let [ [first & rest] m
+         si (count m)
+         sj (count first)]
+         (make si sj)))
+
+(defn transform [f m] 
+  (reduce f m (get-idx m)))
+  
+(def matrix [[1 2 3][4 5 6][7 8 9]])
+
+(def ff (partial etransform (fn[x] (* 2 x))))
+
+(tranform ff matrix)
+     
+     
+          
