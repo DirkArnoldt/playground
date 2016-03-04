@@ -5,5 +5,5 @@
             :url "http://www.apache.org/licenses/LICENSE-2.0"}
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/tools.cli "0.3.3"]]
-  :main genetic.example)
-;  :main neuron.example)
+;  :main genetic.example)
+  :main neuron.example)

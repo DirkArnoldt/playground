@@ -77,7 +77,7 @@
 
 (defn -main [& args]
   (time
-    (let [n (h/build 35 :storkey)
+    (let [n (h/build 35 :hebbian)
           n' (n/train n digits)]
       (doall
         (for [i (range 10)]
