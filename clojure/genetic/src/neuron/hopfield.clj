@@ -6,31 +6,28 @@
 (def ON 1.0)
 (def OFF -1.0)
 
-(def ^:dynamic *treshold* 0.0)
-(def ^:dynamic *iterations* 1)
-
 ;---
 
-(defn- update-state [weights states index]
+(defn- update-state [weights threshold states index]
   (let [temp (reduce + 0.0 (map-indexed #(* (get-in weights [index %1]) %2) states))]
-    (if (< temp *treshold*)
+    (if (< temp threshold)
       (assoc states index OFF)
       (assoc states index ON))))
 
-(defn- update-states [weights states]
+(defn- update-states [weights threshold states]
   (let [size (count states)]
     (loop [states states
            index 0]
       (if (= index size)
         states
-        (recur (update-state weights states index) (inc index) )))))
+        (recur (update-state weights threshold states index) (inc index) )))))
 
-(defn- recall-state [weights pattern]
+(defn- recall-state [weights threshold iterations pattern]
   (loop [states pattern
-         iterations *iterations*]
+         iterations iterations]
     (if (= 0 iterations)
       states
-      (recur (update-states weights states) (dec iterations)))))
+      (recur (update-states weights threshold states) (dec iterations)))))
 
 ;##### Hebbian learning rule #####
 
@@ -52,7 +49,7 @@
 
 (defn- calc-storkey-heights [weights pattern]
   (let [size (count (weights 0))
-        heights (m/initialize-matrix size)
+        heights (m/initialize-matrix [size size] 0.0)
         f (partial calc-storkey-height weights pattern)]
     (m/transform-with-index f heights)))
 
@@ -85,22 +82,25 @@
 
 ;--- public API ---
 
-(defrecord Hopfield [treshold f weights]
+(defrecord Hopfield [threshold iterations f-learn weights]
   NeuralNet
   (train [_ patterns]
-    (Hopfield. treshold f (f weights patterns)))
+    (Hopfield. threshold iterations f-learn (f-learn weights patterns)))
   (recall [_ pattern]
-    (recall-state weights pattern)))
+    (recall-state weights threshold iterations pattern)))
 
 (defn energy [net states]
   (let [weights (:weights net)
         size (count states)
-        term1 (reduce + 0.0 (map #(* *treshold* %) states))
+        term1 (reduce + 0.0 (map #(* (:threshold net) %) states))
         term2 (reduce + 0.0 (for [i (range size) j (range size)]
                               (* (get-in weights [i j]) (states i) (states j))))]
     (+ term1 (* -0.5 term2))))
 
-(defn build [size lrule]
-  (let [weights (initialize-matrix size)
-        lrule-fn (pick-lrule-fn lrule)]
-    (Hopfield. *treshold* lrule-fn weights)))
+(defn build [size options]
+  (let [{:keys [lrule threshold iterations],
+         :or { lrule :hebbian, threshold 0.0, iterations 3}} options
+        weights (initialize-matrix [size size] 0.0)
+        f-learn (pick-lrule-fn lrule)]
+    (Hopfield. threshold iterations f-learn weights)))
+

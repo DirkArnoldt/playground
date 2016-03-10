@@ -1,17 +1,32 @@
 (ns util.matrix)
 
-(defn initialize-matrix [size]
-  (vec (map vec (partition size (repeat (* size size) 0.0)))))
+(defn to-matrix [n coll]
+  (vec (map vec (partition n coll))))
 
-(defn build-indexes [si sj]
+(defn initialize-matrix [[i j] v]
+  (to-matrix j (repeat (* i j) v)))
+
+(defn initialize-matrix2 [[i j] f]
+  (to-matrix j (repeatedly (* i j) f)))
+
+(defn dimension [m]
+  (let [[first & _] m
+        si (count m)
+        sj (count first)]
+    (vector si sj)))
+
+(defn row [m i]
+  (m i))
+
+(defn column [m i]
+  (map #(nth % i) m))
+
+(defn build-indexes [[si sj]]
   (for [i (range si) j (range sj)]
     [i j]))
 
 (defn get-indexes [m]
-  (let [[first & rest] m
-        si (count m)
-        sj (count first)]
-    (build-indexes si sj)))
+  (build-indexes (dimension m)))
 
 (defn etransform [f m idx]
   (assoc-in m idx (f (get-in m idx))))
