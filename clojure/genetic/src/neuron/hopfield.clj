@@ -8,26 +8,18 @@
 
 ;---
 
-(defn- update-state [weights threshold states index]
-  (let [temp (reduce + 0.0 (map-indexed #(* (get-in weights [index %1]) %2) states))]
-    (if (< temp threshold)
-      (assoc states index OFF)
-      (assoc states index ON))))
+(defn- update-states [threshold weights states]
+  (map (fn [r] (if (< (m/dotproduct r states) threshold)
+                 OFF
+                 ON)) weights))
 
-(defn- update-states [weights threshold states]
-  (let [size (count states)]
-    (loop [states states
-           index 0]
-      (if (= index size)
-        states
-        (recur (update-state weights threshold states index) (inc index) )))))
-
-(defn- recall-state [weights threshold iterations pattern]
-  (loop [states pattern
-         iterations iterations]
-    (if (= 0 iterations)
+(defn- recall-state [threshold max-iter weights pattern]
+  (loop [previous nil
+         states pattern
+         i 0]
+    (if (or (= i max-iter) (= states previous))
       states
-      (recur (update-states weights threshold states) (dec iterations)))))
+      (recur states (update-states threshold weights states) (inc i)))))
 
 ;##### Hebbian learning rule #####
 
@@ -48,7 +40,7 @@
                        (filter #(and (not (= i %)) (not (= j %))) (range n))))))
 
 (defn- calc-storkey-heights [weights pattern]
-  (let [size (count (weights 0))
+  (let [size (m/column-count weights)
         heights (m/initialize-matrix [size size] 0.0)
         f (partial calc-storkey-height weights pattern)]
     (m/transform-with-index f heights)))
@@ -82,12 +74,12 @@
 
 ;--- public API ---
 
-(defrecord Hopfield [threshold iterations f-learn weights]
+(defrecord Hopfield [threshold max-iterations f-learn weights]
   NeuralNet
   (train [_ patterns]
-    (Hopfield. threshold iterations f-learn (f-learn weights patterns)))
+    (Hopfield. threshold max-iterations f-learn (f-learn weights patterns)))
   (recall [_ pattern]
-    (recall-state weights threshold iterations pattern)))
+    (recall-state threshold max-iterations weights pattern)))
 
 (defn energy [net states]
   (let [weights (:weights net)
@@ -98,9 +90,9 @@
     (+ term1 (* -0.5 term2))))
 
 (defn build [size options]
-  (let [{:keys [lrule threshold iterations],
-         :or { lrule :hebbian, threshold 0.0, iterations 3}} options
+  (let [{:keys [lrule threshold max-iterations],
+         :or { lrule :hebbian, threshold 0.0, max-iterations 3}} options
         weights (initialize-matrix [size size] 0.0)
         f-learn (pick-lrule-fn lrule)]
-    (Hopfield. threshold iterations f-learn weights)))
+    (Hopfield. threshold max-iterations f-learn weights)))
 

@@ -1,7 +1,7 @@
 (ns genetic.core)
 
-(def mrate 0.03)
-(def rrate 0.7)
+(def MUTATION_RATE 0.03)
+(def RECOMBINATION_RATE 0.7)
 
 (defprotocol Chromosome
   (mutate [lhs])
@@ -82,7 +82,7 @@
     (evolve coll {}))
   ([coll options]
     (let [{:keys [mutationrate recombinationrate selector],
-           :or {mutationrate mrate, recombinationrate rrate, selector tournament-select}} options
+           :or {mutationrate MUTATION_RATE, recombinationrate RECOMBINATION_RATE, selector tournament-select}} options
           mpred (partial rate-pred mutationrate)
           mutator (partial mutate-pop mpred)
           rpred (partial rate-pred recombinationrate)

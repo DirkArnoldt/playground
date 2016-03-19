@@ -1,5 +1,7 @@
 (ns util.activation)
 
+;-------- activation functions
+
 (defn sigmoid [x]
   (/ 1.0 (+ 1.0 (Math/exp (- 0 x)))))
 
@@ -19,3 +21,45 @@
   (let [tanhx (Math/tanh x)]
     (* (+ 1 tanhx) (- 1 tanhx))))
 
+
+;------------- cost functions
+
+(defn quadratic-cost [target output]
+  (* 0.5 (reduce + 0.0 (mapv #(* (- %1 %2) (- %1 %2)) target output))))
+
+(defn cross-entropy-cost [target output]
+  (mapv (fn [y a]
+          (let [res (- (* (* -1 y)
+                          (Math/log a))
+                       (* (- 1 y)
+                          (Math/log (- 1 a))))]
+            (if (.isNaN Double res)
+              0.0
+              res))) target output))
+
+
+;------- regularization
+
+(defn l2-regularization [lrate rparam traing-size]
+  (let [rescale (- 1 (/ (* lrate rparam) traing-size))]
+    (fn [weight]
+      (* weight rescale))))
+
+(defn l1-regularization [lrate rparam traing-size]
+  (let [rescale (/ (* lrate rparam) traing-size)]
+    (fn [weight]
+      (if (< weight 0)
+        (- weight rescale)
+        (+ weight rescale)))))
+
+
+;--------- random with gaussian distribution
+
+(def generator (java.util.Random.))
+
+(defn rand-gaussian
+  ([] (rand-gaussian 0 1))
+  ([mean standard-deviation]
+   (-> (.nextGaussian generator)
+       (* standard-deviation)
+       (+ mean))))
