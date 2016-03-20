@@ -119,7 +119,7 @@
               target (second sample)
               output (n/recall net input)
               hit (if (= output target) 1 0)
-              error (a/quadratic-cost target output)]
+              error (a/cross-entropy-cost target output)]
           (recur (+ acc hit) (+ errors error) (rest test-set)))
         (vector (/ acc total) (/ errors total))))))
 

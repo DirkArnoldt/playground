@@ -22,19 +22,33 @@
 (defn- calc-outputs [af net-input]
   (vec (map #(af %) net-input)))
 
-(defn- calc-output-errors [output target]
-  (vec (mapv - target output)))
-
 (defn- calc-hidden-errors [weights deltas]
   (vec (map #(m/dotproduct % deltas) weights)))
 
-(defn- calc-errors [next output target]
-  (if (nil? next)
-    (vector nil (calc-output-errors output target))
-    (train-layer next output target)))
 
-(defn- calc-deltas [af' net-inputs errors]
+
+(defn- calc-output-deltas [af' net-inputs errors]
   (vec (mapv #(* (af' %1) %2) net-inputs errors)))
+
+
+(defn- calc-output-errors [output target]
+  (vec (mapv - target output)))
+
+(defn- costf-quadratic [af' net-inputs output target]
+  (let [errors (calc-output-errors output target)]
+    (calc-output-deltas af' net-inputs errors)))
+
+(defn- costf [af' net-inputs output target]
+  (let [errors (calc-output-errors output target)]
+    errors))
+
+
+(defn- calc-deltas [next af' net-inputs output target]
+  (if (nil? next)
+    (vector nil (costf af' net-inputs output target))
+    (let [[layer errors] (train-layer next output target)
+          deltas (calc-output-deltas af' net-inputs errors)]
+      (vector layer deltas))))
 
 (defn- calc-weight-deltas [lr input deltas momentum dweights]
   (let [si (count input)
@@ -50,25 +64,36 @@
 
 ; try mapm for performance
 (defn- update-weights [weights deltas rf]
-  (m/mapm #(+ (rf %1) %2) weights deltas))
-;  (m/transform-with-index (fn [v idx] (+ v (get-in deltas idx)) ) weights))
+  ;(m/mapm #(+ (rf %1) %2) weights deltas))
+  (m/transform-with-index (fn [v idx] (+ v (get-in deltas idx)) ) weights))
 
 (defn- update-bias [bias deltas]
   (mapv + bias deltas))
 ;---
 
+(defn- calc-activations [af weights bias input]
+  (let [net-inputs (calc-net-inputs weights bias input)
+        outputs (calc-outputs af net-inputs)]
+    (vector net-inputs outputs)))
+
+(defn- feedforward [layer input target]
+  (let [options (:options layer)
+        af (:af options)
+        af' (:af' options)
+        weights (:weights layer)
+        bias (:bias layer)
+        [net-inputs output] (calc-activations af weights bias input)]
+    (calc-deltas (:next layer) af' net-inputs output target)))
+
 (defrecord GLayer [weights dweights bias dbias options next]
   Layer
-  (train-layer [_ input target]
-    (let [af (:af options)
-          af' (:af' options)
-          lrate (:lrate options)
+  (train-layer [this input target]
+    (let [lrate (:lrate options)
           momentum (:momentum options)
           rf (:rf options)
-          net-inputs (calc-net-inputs weights bias input)
-          output (calc-outputs af net-inputs)
-          [layer errors] (calc-errors next output target)
-          deltas (calc-deltas af' net-inputs errors)
+          ; feedforward
+          [layer deltas] (feedforward this input target)
+          ; backpropagate
           back-errors (calc-hidden-errors weights deltas)
           weight-deltas (calc-weight-deltas lrate input deltas momentum dweights)
           bias-deltas (calc-bias-deltas lrate deltas momentum dbias)
@@ -77,8 +102,7 @@
       [(GLayer. new-weights weight-deltas new-bias bias-deltas options layer) back-errors]))
   (feed [_ input]
     (let [af (:af options)
-          net-inputs (calc-net-inputs weights bias input)
-          outputs (calc-outputs af net-inputs)]
+          [_ outputs] (calc-activations af weights bias input)]
       (if (nil? next)
         outputs
         (feed next outputs)))))
@@ -104,7 +128,7 @@
         dim (vector i j)
         bias (vec (take j (repeatedly a/rand-gaussian)))
         dbias (vec (take j (repeat 0.0)))
-        weights (m/initialize-matrix2 dim (randit (/ 1 (Math/sqrt i))))
+        weights (m/initialize-matrix2 dim (randit (/ 1.0 (Math/sqrt i))))
         dweights (m/initialize-matrix dim 0.0)]
     (if (seq remain)
       (let [next (build-layer (rest coll) options)]
