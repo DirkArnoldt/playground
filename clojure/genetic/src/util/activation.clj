@@ -21,6 +21,8 @@
   (let [tanhx (Math/tanh x)]
     (* (+ 1.0 tanhx) (- 1.0 tanhx))))
 
+(defn relu [x]
+  (max 0.0 x))
 
 ;------------- cost functions
 

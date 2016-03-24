@@ -3,7 +3,8 @@
   (:require [neuron.hopfield :as h])
   (:require [neuron.mlp :as mlp])
   (:require [util.activation :as a])
-  (:require [clojure.java.io :as io]))
+  (:require [clojure.java.io :as io])
+  (:require [clojure.core.matrix :as mm]))
 
 (def digits [
              [-1.0 -1.0 -1.0 -1.0 -1.0
@@ -154,5 +155,6 @@
         (recur (do-epoche epoche net training-set test-set) (inc epoche))))))
 
 (defn -main [& args]
+  (mm/set-current-implementation :vectorz)
   (time
     (train-net 250)))

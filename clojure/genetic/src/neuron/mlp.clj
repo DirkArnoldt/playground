@@ -2,6 +2,8 @@
   (:require [neuron.core])
   (:require [util.matrix :as m])
   (:require [util.activation :as a])
+  (:require [clojure.core.matrix :as mm])
+  (:require [clojure.core.matrix.random :as mr])
   (:import (neuron.core NeuralNet)))
 
 (def LEARNING-RATE 0.025)
@@ -12,27 +14,21 @@
   (train-layer [this input target])
   (feed [this input]))
 
-
-
 ;---
 
-(defn- calc-net-inputs [weights bias input]
-  (vec (mapv #(+ (m/dotproduct %1 input) %2) (m/transpose weights) bias)))
-
-(defn- calc-outputs [af net-input]
-  (vec (map #(af %) net-input)))
+(defn calc-activations [af weights bias input]
+  (let [z (mm/add (mm/mmul input weights) bias)
+        a (mm/emap af z)]
+    [z a]))
 
 (defn- calc-hidden-errors [weights deltas]
-  (vec (map #(m/dotproduct % deltas) weights)))
-
-
+  (mm/mmul weights deltas))
 
 (defn- calc-output-deltas [af' net-inputs errors]
-  (vec (mapv #(* (af' %1) %2) net-inputs errors)))
-
+  (mm/mul (mm/emap af' net-inputs) errors))
 
 (defn- calc-output-errors [output target]
-  (vec (mapv - target output)))
+  (mm/sub target output))
 
 (defn- costf-quadratic [af' net-inputs output target]
   (let [errors (calc-output-errors output target)]
@@ -42,7 +38,6 @@
   (let [errors (calc-output-errors output target)]
     errors))
 
-
 (defn- calc-deltas [next af' net-inputs output target]
   (if (nil? next)
     (vector nil (costf af' net-inputs output target))
@@ -50,31 +45,19 @@
           deltas (calc-output-deltas af' net-inputs errors)]
       (vector layer deltas))))
 
-(defn- calc-weight-deltas [lr input deltas momentum dweights]
-  (let [si (count input)
-        sj (count deltas)
-        weight-deltas (for [i (range si) j (range sj)]
-                        (+ (* lr (deltas j) (input i))
-                           (* momentum (get-in dweights [i j]))))]
-    (m/to-matrix sj weight-deltas)))
+(defn- calc-weight-deltas [lr inputs deltas momentum dweights]
+  (mm/add (mm/mul lr (mm/outer-product inputs deltas)) (mm/mul momentum dweights)))
 
 (defn- calc-bias-deltas [lr deltas momentum dbias]
-  (mapv #(+ (* lr %1)
-            (* momentum %2)) deltas dbias))
+  (mm/add (mm/mul lr deltas) (mm/mul momentum dbias)))
 
-; try mapm for performance
 (defn- update-weights [weights deltas rf]
-  ;(m/mapm #(+ (rf %1) %2) weights deltas))
-  (m/transform-with-index (fn [v idx] (+ v (get-in deltas idx)) ) weights))
+  (mm/add (mm/emap rf weights) deltas))
 
 (defn- update-bias [bias deltas]
-  (mapv + bias deltas))
-;---
+  (mm/add bias deltas))
 
-(defn- calc-activations [af weights bias input]
-  (let [net-inputs (calc-net-inputs weights bias input)
-        outputs (calc-outputs af net-inputs)]
-    (vector net-inputs outputs)))
+;---
 
 (defn- feedforward [layer input target]
   (let [options (:options layer)
@@ -140,3 +123,4 @@
          :or {lrate LEARNING-RATE, momentum MOMENTUM, af a/sigmoid, af' a/sigmoid', rf identity}} options
         layer-options {:lrate lrate, :momentum momentum, :af af, :af' af', :rf rf}]
     (MultiLayerPerceptron. (build-layer coll layer-options))))
+
