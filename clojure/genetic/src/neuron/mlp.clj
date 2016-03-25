@@ -17,7 +17,7 @@
 ;---
 
 (defn- calc-net-inputs [weights bias input]
-  (vec (mapv #(+ (m/dotproduct %1 input) %2) (m/transpose weights) bias)))
+  (mapv #(+ (m/dotproduct %1 input) %2) (m/transpose weights) bias))
 
 (defn- calc-outputs [af net-input]
   (vec (map #(af %) net-input)))
@@ -28,24 +28,24 @@
 
 
 (defn- calc-output-deltas [af' net-inputs errors]
-  (vec (mapv #(* (af' %1) %2) net-inputs errors)))
+  (mapv #(* (af' %1) %2) net-inputs errors))
 
 
 (defn- calc-output-errors [output target]
-  (vec (mapv - target output)))
+  (mapv - output target))
 
 (defn- costf-quadratic [af' net-inputs output target]
   (let [errors (calc-output-errors output target)]
     (calc-output-deltas af' net-inputs errors)))
 
-(defn- costf [af' net-inputs output target]
+(defn- costf-cross-entropy [af' net-inputs output target]
   (let [errors (calc-output-errors output target)]
     errors))
 
 
 (defn- calc-deltas [next af' net-inputs output target]
   (if (nil? next)
-    (vector nil (costf af' net-inputs output target))
+    (vector nil (costf-cross-entropy af' net-inputs output target))
     (let [[layer errors] (train-layer next output target)
           deltas (calc-output-deltas af' net-inputs errors)]
       (vector layer deltas))))
@@ -62,13 +62,11 @@
   (mapv #(+ (* lr %1)
             (* momentum %2)) deltas dbias))
 
-; try mapm for performance
 (defn- update-weights [weights deltas rf]
-  ;(m/mapm #(+ (rf %1) %2) weights deltas))
-  (m/transform-with-index (fn [v idx] (+ v (get-in deltas idx)) ) weights))
+  (m/transform-with-index (fn [w idx] (- (rf w) (get-in deltas idx)) ) weights))
 
 (defn- update-bias [bias deltas]
-  (mapv + bias deltas))
+  (mapv - bias deltas))
 ;---
 
 (defn- calc-activations [af weights bias input]

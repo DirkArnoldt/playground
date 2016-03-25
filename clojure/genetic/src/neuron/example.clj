@@ -124,11 +124,16 @@
         (vector (/ acc total) (/ errors total))))))
 
 (defn- do-epoche [epoche net training-set test-set]
-  (let [trained (n/train net training-set)
+  (let [trained (n/train net (shuffle training-set))
+        [train-accuracy train-error] (test-net trained training-set)
         [accuracy error] (test-net trained test-set)]
     (do
       (print "epoche: ")
       (print epoche)
+      (print " -> ")
+      (print train-accuracy)
+      (print " -> ")
+      (print train-error)
       (print " -> ")
       (print accuracy)
       (print " -> ")
@@ -143,9 +148,9 @@
         sample (first training-set)
         inodes (count (first sample))
         onodes (count (second sample))
-        lrate 0.015
-        rf (a/l1-regularization lrate 0.1 (count training-set))
-        net (mlp/build [inodes 10 onodes] {:lrate lrate, :momentum 0.25, :rf rf})
+        lrate 0.1
+        rf (a/l1-regularization lrate 1 (count training-set))
+        net (mlp/build [inodes 10 onodes] {:lrate lrate, :momentum 0, :rf rf})
         epoche 1]
     (loop [net net
            epoche epoche]
