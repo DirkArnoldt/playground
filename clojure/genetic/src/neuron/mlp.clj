@@ -28,7 +28,7 @@
   (mm/mul (mm/emap af' net-inputs) errors))
 
 (defn- calc-output-errors [output target]
-  (mm/sub target output))
+  (mm/sub output target))
 
 (defn- costf-quadratic [af' net-inputs output target]
   (let [errors (calc-output-errors output target)]
@@ -52,10 +52,10 @@
   (mm/add (mm/mul lr deltas) (mm/mul momentum dbias)))
 
 (defn- update-weights [weights deltas rf]
-  (mm/add (mm/emap rf weights) deltas))
+  (mm/sub (mm/emap rf weights) deltas))
 
 (defn- update-bias [bias deltas]
-  (mm/add bias deltas))
+  (mm/sub bias deltas))
 
 ;---
 

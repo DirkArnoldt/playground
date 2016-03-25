@@ -125,7 +125,7 @@
         (vector (/ acc total) (/ errors total))))))
 
 (defn- do-epoche [epoche net training-set test-set]
-  (let [trained (n/train net training-set)
+  (let [trained (n/train net (shuffle training-set))
         [accuracy error] (test-net trained test-set)]
     (do
       (print "epoche: ")
