@@ -1,4 +1,5 @@
 (ns neuron.example
+  (:gen-class)
   (:require [neuron.core :as n])
   (:require [neuron.hopfield :as h])
   (:require [neuron.mlp :as mlp])

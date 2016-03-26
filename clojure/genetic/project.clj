@@ -8,4 +8,5 @@
                  [net.mikera/core.matrix "0.50.1"]
                  [net.mikera/vectorz-clj "0.43.1"]]
 ;  :main genetic.example)
-  :main neuron.example)
+  :main neuron.example
+  :profiles {:uberjar {:aot :all}})
