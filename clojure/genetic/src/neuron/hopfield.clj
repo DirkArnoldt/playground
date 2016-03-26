@@ -9,7 +9,7 @@
 ;---
 
 (defn- update-states [threshold weights states]
-  (map (fn [r] (if (< (m/dotproduct r states) threshold)
+  (map (fn [r] (if (< (m/dot r states) threshold)
                  OFF
                  ON)) weights))
 
@@ -41,7 +41,7 @@
 
 (defn- calc-storkey-heights [weights pattern]
   (let [size (m/column-count weights)
-        heights (m/initialize-matrix [size size] 0.0)
+        heights (m/compute-matrix [size size] 0.0)
         f (partial calc-storkey-height weights pattern)]
     (m/transform-with-index f heights)))
 
@@ -92,7 +92,7 @@
 (defn build [size options]
   (let [{:keys [lrule threshold max-iterations],
          :or { lrule :hebbian, threshold 0.0, max-iterations 3}} options
-        weights (initialize-matrix [size size] 0.0)
+        weights (compute-matrix [size size] 0.0)
         f-learn (pick-lrule-fn lrule)]
     (Hopfield. threshold max-iterations f-learn weights)))
 

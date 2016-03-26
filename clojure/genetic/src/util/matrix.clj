@@ -3,11 +3,17 @@
 (defn to-matrix [n coll]
   (vec (map vec (partition n coll))))
 
-(defn initialize-matrix [[i j] v]
-  (to-matrix j (repeat (* i j) v)))
-
-(defn initialize-matrix2 [[i j] f]
+(defn compute-matrix [[i j] f]
   (to-matrix j (repeatedly (* i j) f)))
+
+(defn zero-matrix [dim]
+  (compute-matrix dim (constantly 0.0)))
+
+(defn compute-vector [i f]
+  (vec (repeatedly i f)))
+
+(defn zero-vector [i]
+  (compute-vector i (constantly 0.0)))
 
 (defn row-count [m]
   (count m))
@@ -60,8 +66,19 @@
 (defn habamard [a b]
   (mapv * a b))
 
-(defn dotproduct [a b]
+(defn dot [a b]
   (reduce + 0.0 (habamard a b)))
 
 (defn mapm [f a b]
-  (to-matrix (column-count a) (mapv f (flatten a) (flatten b))))
+  (mapv (fn [ea eb]
+          (if (coll? ea)
+            (mapm f ea eb)
+            (f ea eb))) a b))
+;  (to-matrix (column-count a) (mapv f (flatten a) (flatten b))))
+
+; vector
+(defn add [a b]
+  (mapv + a b))
+
+(defn sub [a b]
+  (mapv - a b))

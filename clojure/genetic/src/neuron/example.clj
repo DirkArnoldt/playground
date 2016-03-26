@@ -1,4 +1,5 @@
 (ns neuron.example
+  (:gen-class)
   (:require [neuron.core :as n])
   (:require [neuron.hopfield :as h])
   (:require [neuron.mlp :as mlp])
@@ -108,6 +109,7 @@
 (defn make-training-set [lines]
   (map #(split-input-output %) lines))
 
+
 (defn- test-net [net test-set]
   (let [total (count test-set)]
     (loop [acc 0
@@ -123,22 +125,46 @@
           (recur (+ acc hit) (+ errors error) (rest test-set)))
         (vector (/ acc total) (/ errors total))))))
 
-(defn- do-epoche [epoche net training-set test-set]
+(def max-y 500.0)
+
+(defn scale [y]
+  (- max-y (Math/min max-y (* 1000.0 y))))
+
+(defn scalep [y]
+  (- max-y  (* max-y y)))
+
+(defn- do-epoche [gfx epoche net training-set test-set]
   (let [trained (n/train net (shuffle training-set))
         [train-accuracy train-error] (test-net trained training-set)
         [accuracy error] (test-net trained test-set)]
     (do
+      (.setColor gfx (java.awt.Color. 255 0 0))
+      (.fillRect gfx epoche (scalep train-accuracy) 2 2)
+      (.setColor gfx (java.awt.Color. 0 255 0))
+      (.fillRect gfx epoche (scalep accuracy) 2 2)
+      (.setColor gfx (java.awt.Color. 127 127 127))
+      (.fillRect gfx epoche (scale train-error) 2 2)
+      (.setColor gfx (java.awt.Color. 0 0 255))
+      (.fillRect gfx epoche (scale error) 2 2)
       (print "epoche: ")
       (print epoche)
       (print " -> ")
       (print train-accuracy)
-      (print " -> ")
-      (print train-error)
-      (print " -> ")
+      (print " / ")
       (print accuracy)
-      (print " -> ")
+      (print " : ")
+      (print train-error)
+      (print " / ")
       (println error))
     trained))
+
+(defn- make-gfx [x y]
+  (let [gfx (.getGraphics (doto (java.awt.Frame.)
+                            (.setSize (java.awt.Dimension. x (+ 50 y)))
+                            (.setVisible true)))]
+    (.setColor gfx (java.awt.Color. 255 255 255))
+    (.fillRect gfx x y x y)
+    gfx))
 
 (defn- train-net [max-epoche]
   (let [lines (read-lines "resources/mlp-training.dat")
@@ -148,16 +174,21 @@
         sample (first training-set)
         inodes (count (first sample))
         onodes (count (second sample))
-        lrate 0.1
-        rf (a/l1-regularization lrate 1 (count training-set))
-        net (mlp/build [inodes 10 onodes] {:lrate lrate, :momentum 0, :rf rf})
-        epoche 1]
-    (loop [net net
+        lrate 0.03
+        momentum 0.3
+        rparam 0.3
+        rf (a/l2-regularization lrate rparam (count training-set))
+        net (mlp/build [inodes 10 onodes] {:lrate lrate, :momentum momentum,
+                                           :rf rf, :batch-size 10})
+        epoche 1
+        gfx (make-gfx max-epoche max-y)]
+    (loop [gfx gfx
+           net net
            epoche epoche]
       (if (= max-epoche epoche)
         net
-        (recur (do-epoche epoche net training-set test-set) (inc epoche))))))
+        (recur gfx (do-epoche gfx epoche net training-set test-set) (inc epoche))))))
 
 (defn -main [& args]
   (time
-    (train-net 250)))
+    (train-net 500)))
