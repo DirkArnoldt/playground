@@ -6,14 +6,16 @@
 (defn compute-matrix [[i j] f]
   (to-matrix j (repeatedly (* i j) f)))
 
-(defn zero-matrix [dim]
-  (compute-matrix dim (constantly 0.0)))
+(def zero-matrix (memoize
+                   (fn [dim]
+                     (compute-matrix dim (constantly 0.0)))))
 
 (defn compute-vector [i f]
   (vec (repeatedly i f)))
 
-(defn zero-vector [i]
-  (compute-vector i (constantly 0.0)))
+(def zero-vector (memoize
+                   (fn [i]
+                     (compute-vector i (constantly 0.0)))))
 
 (defn row-count [m]
   (count m))
@@ -74,7 +76,6 @@
           (if (coll? ea)
             (mapm f ea eb)
             (f ea eb))) a b))
-;  (to-matrix (column-count a) (mapv f (flatten a) (flatten b))))
 
 ; vector
 (defn add [a b]

@@ -1,9 +1,11 @@
 (ns neuron.example
   (:gen-class)
-  (:require [neuron.core :as n])
-  (:require [neuron.hopfield :as h])
-  (:require [neuron.mlp :as mlp])
-  (:require [util.activation :as a])
+  (:require [neuron.core :as n]
+            [neuron.hopfield :as h]
+            [neuron.mlp :as mlp])
+  (:require [util.activation :as a]
+            [util.cost :as cost]
+            [util.regularization :as reg])
   (:require [clojure.java.io :as io]))
 
 (def digits [
@@ -109,10 +111,26 @@
 (defn make-training-set [lines]
   (map #(split-input-output %) lines))
 
+(defn max-item [a]
+  (first (reduce #(if (> (second %1) (second %2)) %1 %2) (map-indexed #(vector %1 %2) a))))
+
+(defn hit [a b]
+  (let [amax (max-item a)
+        bmax (max-item b)]
+    (= amax bmax)))
+
+;------------- cost functions
+
+(defn quadratic-cost [target output]
+  (* 0.5 (reduce + 0.0 (mapv cost/squared-error output target))))
+
+(defn cross-entropy-cost [target output]
+  (* -1 (reduce + (mapv cost/log-likelihood output target))))
+
 
 (defn- test-net [net test-set]
   (let [total (count test-set)]
-    (loop [acc 0
+    (loop [acc 0.0
            errors 0.0
            test-set test-set]
       (if (seq test-set)
@@ -120,8 +138,8 @@
               input (first sample)
               target (second sample)
               output (n/recall net input)
-              hit (if (= output target) 1 0)
-              error (a/cross-entropy-cost target output)]
+              hit (if (hit output target) 1 0)
+              error (cross-entropy-cost target output)]
           (recur (+ acc hit) (+ errors error) (rest test-set)))
         (vector (/ acc total) (/ errors total))))))
 
@@ -159,36 +177,38 @@
     trained))
 
 (defn- make-gfx [x y]
-  (let [gfx (.getGraphics (doto (java.awt.Frame.)
+  (let [frame (doto (java.awt.Frame.)
                             (.setSize (java.awt.Dimension. x (+ 50 y)))
-                            (.setVisible true)))]
+                            (.setVisible true))
+        gfx (.getGraphics frame)]
     (.setColor gfx (java.awt.Color. 255 255 255))
     (.fillRect gfx x y x y)
-    gfx))
+    [frame gfx]))
 
 (defn- train-net [max-epoche]
   (let [lines (read-lines "resources/mlp-training.dat")
-        training-set (make-training-set lines)
-        lines2 (read-lines "resources/mlp-test.dat")
-        test-set (make-training-set lines2)
+        training-set (shuffle (make-training-set lines))
+;        lines2 (read-lines "resources/mlp-test.dat")
+        ;test-set (take 15 training-set)
         sample (first training-set)
         inodes (count (first sample))
         onodes (count (second sample))
-        lrate 0.03
+        batch-size 10
+        lrate 0.003
         momentum 0.3
-        rparam 0.3
-        rf (a/l2-regularization lrate rparam (count training-set))
+        rparam (/ 0.01 (count training-set))
+        rf (reg/l2-regularization lrate rparam)
         net (mlp/build [inodes 10 onodes] {:lrate lrate, :momentum momentum,
-                                           :rf rf, :batch-size 10})
+                                           :rf rf, :af a/relu, :af' a/relu',
+                                           :batch-size batch-size})
         epoche 1
-        gfx (make-gfx max-epoche max-y)]
-    (loop [gfx gfx
-           net net
+        [frame gfx] (make-gfx max-epoche max-y)]
+    (loop [net net
            epoche epoche]
       (if (= max-epoche epoche)
-        net
-        (recur gfx (do-epoche gfx epoche net training-set test-set) (inc epoche))))))
+        (.dispose frame)
+        (recur (do-epoche gfx epoche net (drop 15 training-set) (take 15 training-set)) (inc epoche))))))
 
 (defn -main [& args]
   (time
-    (train-net 500)))
+    (train-net 1000)))
